@@ -1,202 +1,155 @@
-# Node as dictionary
-def make_node(key, left=None, right=None):
-    return {"key": key, "left": left, "right": right}
+class Node:
+    def __init__(self, key):
+        self.key = key
+        self.degree = 0
+        self.parent = None
+        self.child = None
+        self.left = self
+        self.right = self
+        self.mark = False
 
-# Right rotation
-def rotate_right(x):
-    y = x["left"]
-    x["left"] = y["right"]
-    y["right"] = x
-    return y
+def create_heap():
+    return {"min": None, "n": 0}
 
-# Left rotation
-def rotate_left(x):
-    y = x["right"]
-    x["right"] = y["left"]
-    y["left"] = x
-    return y
-
-# Splay operation
-def splay(root, key):
-    if root is None or root["key"] == key:
-        return root
-
-    # Key in left subtree
-    if key < root["key"]:
-        if root["left"] is None:
-            return root
-        if key < root["left"]["key"]:  # Zig-Zig
-            root["left"]["left"] = splay(root["left"]["left"], key)
-            root = rotate_right(root)
-        elif key > root["left"]["key"]:  # Zig-Zag
-            root["left"]["right"] = splay(root["left"]["right"], key)
-            if root["left"]["right"]:
-                root["left"] = rotate_left(root["left"])
-        return root if root["left"] is None else rotate_right(root)
-
-    else:  # Key in right subtree
-        if root["right"] is None:
-            return root
-        if key < root["right"]["key"]:  # Zag-Zig
-            root["right"]["left"] = splay(root["right"]["left"], key)
-            if root["right"]["left"]:
-                root["right"] = rotate_right(root["right"])
-        elif key > root["right"]["key"]:  # Zag-Zag
-            root["right"]["right"] = splay(root["right"]["right"], key)
-            root = rotate_left(root)
-        return root if root["right"] is None else rotate_left(root)
-
-# Insert
-def insert(root, key):
-    if root is None:
-        return make_node(key)
-    root = splay(root, key)
-    if root["key"] == key:
-        return root
-    new_node = make_node(key)
-    if key < root["key"]:
-        new_node["right"] = root
-        new_node["left"] = root["left"]
-        root["left"] = None
+def insert(heap, key):
+    node = Node(key)
+    if heap["min"] is None:
+        heap["min"] = node
     else:
-        new_node["left"] = root
-        new_node["right"] = root["right"]
-        root["right"] = None
-    return new_node
+        # Insert node into root list
+        node.right = heap["min"].right
+        node.left = heap["min"]
+        heap["min"].right.left = node
+        heap["min"].right = node
 
-# Search
-def search(root, key):
-    return splay(root, key)
+        if node.key < heap["min"].key:
+            heap["min"] = node
+    heap["n"] += 1
 
-# Delete
-def delete(root, key):
-    if root is None:
-        return None
-    root = splay(root, key)
-    if root["key"] != key:
-        return root
-    if root["left"] is None:
-        return root["right"]
-    temp = root["right"]
-    root = splay(root["left"], key)
-    root["right"] = temp
-    return root
+def find_min(heap):
+    return heap["min"].key if heap["min"] else None
 
-# Inorder traversal
-def inorder(root):
-    if root:
-        inorder(root["left"])
-        print(root["key"], end=" ")
-        inorder(root["right"])
+# Example
+heap = create_heap()
+for k in [7, 3, 17, 24]:
+    insert(heap, k)
+print("Minimum key:", find_min(heap))
 
+
+≠====================
+
+
+
+from collections import deque
+
+def bfs(graph, source, sink, parent):
+    visited = [False] * len(graph)
+    queue = deque([source])
+    visited[source] = True
+
+    while queue:
+        u = queue.popleft()
+        for v, capacity in enumerate(graph[u]):
+            if not visited[v] and capacity > 0:
+                parent[v] = u
+                visited[v] = True
+                if v == sink:
+                    return True
+                queue.append(v)
+    return False
+
+def ford_fulkerson(graph, source, sink):
+    parent = [-1] * len(graph)
+    max_flow = 0
+
+    while bfs(graph, source, sink, parent):
+        # Find bottleneck capacity
+        path_flow = float("inf")
+        s = sink
+        while s != source:
+            path_flow = min(path_flow, graph[parent[s]][s])
+            s = parent[s]
+
+        max_flow += path_flow
+
+        # Update residual graph
+        v = sink
+        while v != source:
+            u = parent[v]
+            graph[u][v] -= path_flow
+            graph[v][u] += path_flow
+            v = parent[v]
+
+    return max_flow
+
+# Example graph
+graph = [
+    [0, 16, 13, 0, 0, 0],
+    [0, 0, 10, 12, 0, 0],
+    [0, 4, 0, 0, 14, 0],
+    [0, 0, 9, 0, 0, 20],
+    [0, 0, 0, 7, 0, 4],
+    [0, 0, 0, 0, 0, 0]
+]
+print("The maximum possible flow is", ford_fulkerson(graph, 0, 5))
+
+
+
+==================================
+
+from collections import deque
+
+def bfs(adj, s, t, parent):
+    visited = [False] * len(adj)
+    queue = deque([s])
+    visited[s] = True
+
+    while queue:
+        u = queue.popleft()
+        for v, cap in enumerate(adj[u]):
+            if not visited[v] and cap > 0:
+                parent[v] = u
+                visited[v] = True
+                if v == t:
+                    return True
+                queue.append(v)
+    return False
+
+def edmonds_karp(adj, names, s, t):
+    max_flow = 0
+    parent = [-1] * len(adj)
+
+    while bfs(adj, s, t, parent):
+        flow = float("inf")
+        v = t
+        while v != s:
+            flow = min(flow, adj[parent[v]][v])
+            v = parent[v]
+        max_flow += flow
+
+        v = t
+        while v != s:
+            u = parent[v]
+            adj[u][v] -= flow
+            adj[v][u] += flow
+            v = parent[v]
+
+        # Print path
+        path = []
+        v = t
+        while v != -1:
+            path.append(v)
+            v = parent[v] if v != s else -1
+        print("Path:", " -> ".join(names[i] for i in reversed(path)), ", Flow:", flow)
+
+    return max_flow
 
 # Example usage
-if __name__ == "__main__":
-    root = None
-    for x in [10, 20, 30, 40, 50, 25]:
-        root = insert(root, x)
+n = 6
+adj = [[0]*n for _ in range(n)]
+names = ['s', 'v1', 'v2', 'v3', 'v4', 't']
+edges = [(0,1,3),(0,2,7),(1,3,3),(1,4,4),(2,1,5),(2,4,3),(3,4,3),(3,5,2),(4,5,6)]
+for u,v,c in edges:
+    adj[u][v] = c
 
-    print("Inorder traversal after insertion:")
-    inorder(root)
-    print("\nSearching 25:")
-    root = search(root, 25)
-    print("Root after splaying:", root["key"])
-    root = delete(root, 40)
-    print("Inorder traversal after deleting 40:")
-    inorder(root)
-==================================================================================================================================================================
-
-
-
-
-def create_node(t, leaf=False):
-    return {"t": t, "leaf": leaf, "keys": [], "children": []}
-
-def traverse(node):
-    if node is None:
-        return
-    for i in range(len(node["keys"])):
-        if not node["leaf"]:
-            traverse(node["children"][i])
-        print(node["keys"][i], end=" ")
-    if not node["leaf"]:
-        traverse(node["children"][len(node["keys"])])
-
-def search(node, k):
-    if node is None:
-        return None
-    i = 0
-    while i < len(node["keys"]) and k > node["keys"][i]:
-        i += 1
-    if i < len(node["keys"]) and node["keys"][i] == k:
-        return node
-    if node["leaf"]:
-        return None
-    return search(node["children"][i], k)
-
-def split_child(parent, i, t):
-    y = parent["children"][i]
-    z = create_node(t, y["leaf"])
-    parent["children"].insert(i + 1, z)
-    parent["keys"].insert(i, y["keys"][t - 1])
-    z["keys"] = y["keys"][t:(2 * t - 1)]
-    y["keys"] = y["keys"][0:(t - 1)]
-    if not y["leaf"]:
-        z["children"] = y["children"][t:(2 * t)]
-        y["children"] = y["children"][0:t]
-
-def insert_non_full(node, k, t):
-    i = len(node["keys"]) - 1
-    if node["leaf"]:
-        node["keys"].append(0)
-        while i >= 0 and k < node["keys"][i]:
-            node["keys"][i + 1] = node["keys"][i]
-            i -= 1
-        node["keys"][i + 1] = k
-    else:
-        while i >= 0 and k < node["keys"][i]:
-            i -= 1
-        i += 1
-        if len(node["children"][i]["keys"]) == (2 * t - 1):
-            split_child(node, i, t)
-            if k > node["keys"][i]:
-                i += 1
-        insert_non_full(node["children"][i], k, t)
-
-def insert(root, k, t):
-    if root is None:
-        root = create_node(t, True)
-        root["keys"].append(k)
-        return root
-    if len(root["keys"]) == (2 * t - 1):
-        s = create_node(t, False)
-        s["children"].append(root)
-        split_child(s, 0, t)
-        i = 0
-        if s["keys"][0] < k:
-            i += 1
-        insert_non_full(s["children"][i], k, t)
-        return s
-    else:
-        insert_non_full(root, k, t)
-        return root
-
-
-# Example usage
-if __name__ == "__main__":
-    t = 3
-    root = None
-    elements = [10, 20, 5, 6, 12, 30, 7, 17]
-    for el in elements:
-        root = insert(root, el, t)
-
-    print("Traversal of B-Tree:")
-    traverse(root)
-    print("\nSearch 6:", "Found" if search(root, 6) else "Not Found")
-    print("Search 15:", "Found" if search(root, 15) else "Not Found")
-
-
-
-
-
-
+print("The maximum possible flow is", edmonds_karp(adj, names, 0, 5))
